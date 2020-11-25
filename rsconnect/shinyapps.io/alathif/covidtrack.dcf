@@ -1,0 +1,10 @@
+name: covidtrack
+title:
+username:
+account: alathif
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3283743
+bundleId: 3892024
+url: https://alathif.shinyapps.io/covidtrack/
+when: 1606077279.19567
