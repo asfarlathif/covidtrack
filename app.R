@@ -100,7 +100,7 @@ ui <- fluidPage(
             br(), br(),
             
             "This app is created by Asfar Lathif",
-            "View app code", a("here", href =)
+            "View app code", a("here", href = "https://github.com/asfarlathif/covidtrack")
         ),
         
         
