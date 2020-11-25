@@ -5,6 +5,8 @@ account: alathif
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 3283743
-bundleId: 3892024
+bundleId: 3904728
 url: https://alathif.shinyapps.io/covidtrack/
-when: 1606077279.19567
+when: 1606313100.01921
+asMultiple: FALSE
+asStatic: FALSE
