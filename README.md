@@ -1,7 +1,5 @@
 ## COVID19 Tracker
 
-For this STAT545B assignment-3b, I decided to go with **Option A** and create my own shiny app called **COVID19 Tracker**.
-
 **COVID19 Tracker** is an application to track the number of cases and deaths due to COVID19 recorded worldwide and in each countries from 31st December 2019 to present day.
 
 !["Map Tab"](images/home.png)
