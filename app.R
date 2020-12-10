@@ -1,13 +1,19 @@
 
 #LOADING DEPENDENCIES
 
-library(shiny)
+library(shiny) 
 library(shinythemes)
+
+#FOR DATA CLEANING
 library(tidyverse)
 library(lubridate)
+
+#FOR TABLE AND PLOTS
 library(DT)
 library(leaflet)
 library(plotly)
+
+#SPATIAL DATA PACKAGES FOR MAP AND COUNTRY COORDINATES
 library(sf)
 library(rgeos)
 library(rnaturalearth)
@@ -51,10 +57,10 @@ death <- select(covid_data,admin,total_deaths) %>%
     filter(total_deaths > 0)
 
 #merging case and death data
-data1 <- left_join(case, death, by = "admin")
+CovidWorld <- left_join(case, death, by = "admin")
 
 #merging world data from case and death data
-world <- left_join(world, select(data1, -admin), by = "adm0_a3")
+world <- left_join(world, select(CovidWorld, -admin), by = "adm0_a3")
 
 world_points <-
     cbind(world, st_coordinates(sf::st_centroid(world$geometry)))
@@ -95,11 +101,13 @@ ui <- fluidPage(
             "This app uses data from ",
             em(a("Our World in Data", href = "https://ourworldindata.org/")), 
             ". To visit their GitHub repository,", 
-            "Click ", a("here", href ="https://github.com/owid/covid-19-data/tree/master/public/data"),
+            "Click ", a("here", href = "https://github.com/owid/covid-19-data/tree/master/public/data"),
             
             br(), br(),
             
-            "This app is created by Asfar Lathif",
+            #APP CREDITS
+            "This app is created by ", em("Asfar Lathif."),
+            br(),
             "View app code", a("here", href = "https://github.com/asfarlathif/covidtrack")
         ),
         
@@ -115,11 +123,14 @@ ui <- fluidPage(
             (
                 #Tab 1: Leaflet Map and Case and Death Table (Country-wise) 
                 tabPanel("Map",leafletOutput("Map"),
+                         br(),
+                         em("Click on the circle marker in the map to filter based on Country. 
+                             Click on the marker again for a popup of total cases and deaths"),
                          br(), br(), 
                          DTOutput("table")),
                 
                 #Tab 2: Number of Cases - bar graph and table
-                tabPanel("Daily Cases", plotlyOutput("CaseCurve"),
+                tabPanel("Cases", plotlyOutput("CaseCurve"),
                          br(),
                          em("Zoom in on the plot to filter the data table below. 
                             Double click to set it back to default"),
@@ -143,16 +154,16 @@ ui <- fluidPage(
 
 
 # DEFINING SERVER
-server <- function(input, output) {
+server <- function(input, output, session) {
     
     #Filetring covid data based on input country
-    covid_data1 <- reactive({
+    covid_data_subset <- reactive({
         
         if (input$country != "")
-            covid_data1 <- filter(covid_data, admin == input$country)
+            covid_data_subset <- filter(covid_data, admin == input$country)
         else
             # "World" is the default
-            covid_data1 <- filter(covid_data, admin == "World")
+            covid_data_subset <- filter(covid_data, admin == "World")
         
     })
     
@@ -166,15 +177,16 @@ server <- function(input, output) {
     output$stats <- renderText({
         
         name <- ifelse(input$country != "", input$country, "World")
+        #when no country is selected - "worldwide" data is subsetted
         
-        data1 <- filter(data1, admin == name)
+        CovidWorld <- filter(CovidWorld, admin == name)
         
         #filtering the latest number of total cases and deaths
-        newcase <- (covid_data1() %>% arrange(desc(date)) %>% slice_head())
+        newcase <- (covid_data_subset() %>% arrange(desc(date)) %>% slice_head())
         
-        paste(paste0("Total cases:", "   ", data1$total_cases),
-              paste0("Total Deaths:", "   ", data1$total_deaths),
-              paste0("New cases:", "   ", newcase$new_cases),
+        paste(paste0("Total cases:", "   ", CovidWorld$total_cases),
+              paste0("Total Deaths:", "   ", CovidWorld$total_deaths),
+              paste0("New cases(past 24h):", "   ", newcase$new_cases),
               sep = "\n")
     })
     
@@ -194,21 +206,22 @@ server <- function(input, output) {
         }
         
         #Total cases in the World
-        world_total <- (data1 %>% filter(adm0_a3 == "OWID_WRL"))$total_cases
+        world_total <- (CovidWorld %>% filter(adm0_a3 == "OWID_WRL"))$total_cases
         
         #Interactive Leaflet map
-        leaflet() %>%
+        m <- leaflet() %>%
             
             setView(lng = lon,
                     lat = lat,
                     zoom = zoom) %>% #Setting zooming based on coordinates
             
-            addTiles() %>% #country layer
+            addTiles(options = tileOptions(noWrap = F)) %>% #country layer
             
             #Adding Cirlce marks that are proportional to the number of cases in each country
             addCircleMarkers(
                 world_points$X,
                 world_points$Y,
+                layerId = world_points$admin,
                 color = "red",
                 radius = world_points$total_cases * 100 / world_total,
                 
@@ -220,12 +233,28 @@ server <- function(input, output) {
                 #Appears on hovering over the marker
                 label = world_points$admin
             )
+        
+        return(m)
+    })
+    
+    # Implementing country filter from leaflet map
+    
+    observeEvent(input$Map_marker_click, {
+        
+        #Recording the "CLICK" events from the map
+        click<-input$Map_marker_click
+        
+        if(is.null(click))
+            return()
+        #if a country marker was clicked, then the filter is applied
+        updateSelectInput(session, "country", selected = click$id)
+        
     })
     
     #Countrywise Total cases and deaths table (Tab 1)
     output$table <- renderDT({
         
-        t <- data1 [,-1] %>% 
+        t <- CovidWorld [,-1] %>% 
             arrange(desc(total_cases),.by_group = FALSE) %>% 
             rename(Country = admin, 
                    `Total Cases` = total_cases, 
@@ -244,7 +273,7 @@ server <- function(input, output) {
     output$CaseCurve <- renderPlotly({
         
         #plotly interactive graph
-        c <- plot_ly(data = covid_data1(), x = ~date, y = ~ new_cases, 
+        c <- plot_ly(data = covid_data_subset(), x = ~date, y = ~ new_cases, 
                      type = "bar", mode = "markers", source = "c") %>%  
             
             layout(xaxis = list(title = ""),
@@ -260,7 +289,7 @@ server <- function(input, output) {
     output$DeathCurve <- renderPlotly({
         
         #plotly interactive graph
-        d <-  plot_ly(data = covid_data1(), x = ~date, y = ~ new_deaths, 
+        d <-  plot_ly(data = covid_data_subset(), x = ~date, y = ~ new_deaths, 
                       type = "bar", mode = "markers", source = "d") %>% 
             
             layout(xaxis = list(title = ""),
@@ -284,14 +313,16 @@ server <- function(input, output) {
             #No zooming ~ no filtering - all dates from (31-12-2019 to Present day)
             a <- min(covid_data$date)
             b <- max(covid_data$date)
-            return(c(a,b))
         }
         
         else{
+            
             a <- as.Date(c[1], origin="1970-01-01")+1
             b <- as.Date(c[2], origin="1970-01-01")
-            return(c(a,b))
         }
+        
+        return(c(a,b))
+        
     })
     
     #Extracting zooming details from the deaths graph - dates from x axis
@@ -306,21 +337,21 @@ server <- function(input, output) {
             #No zooming ~ no filtering - all dates from (31-12-2019 to Present day)
             a <- min(covid_data$date)
             b <- max(covid_data$date)
-            return(c(a,b))
         }
         
         else{
             a <- as.Date(d[1], origin="1970-01-01")+1
             b <- as.Date(d[2], origin="1970-01-01")
-            return(c(a,b))
         }
+        
+        return(c(a,b))
     })
     
     #Datatable for Cases and Deaths
     tablemain <- reactive({
         
         #Cases table
-        t1 <- covid_data1() %>% 
+        t1 <- covid_data_subset() %>% 
             
             select(admin, date, total_cases, new_cases) %>%
             
@@ -332,7 +363,7 @@ server <- function(input, output) {
             filter(Date %in% c(xaxis1()[1]:xaxis1()[2]))
         
         #Deaths table
-        t2 <- covid_data1() %>% 
+        t2 <- covid_data_subset() %>% 
             
             select(admin, date, total_deaths, new_deaths) %>%
             
@@ -349,7 +380,7 @@ server <- function(input, output) {
     
     #Rendering Cases Datatable
     output$table1 <- renderDT({
-
+        
         datatable(tablemain()[[1]],
                   style = "bootstrap", #Theme
                   options = list(sDom  = '<"top">lt<"bottom">ip')) #Options to remove search bar
@@ -358,7 +389,7 @@ server <- function(input, output) {
     
     #Rendering Deaths Datatable
     output$table2 <- renderDT({
-
+        
         datatable(tablemain()[[2]],
                   style = "bootstrap", #Theme
                   options = list(sDom  = '<"top">lt<"bottom">ip')) #Options to remove search bar

@@ -1,6 +1,6 @@
 ## COVID19 Tracker
 
-**COVID19 Tracker** is an application to track the number of cases and deaths due to COVID19 recorded worldwide and in each countries from 31st December 2019 to present day.
+**COVID19 Tracker** is an application to track the number of cases and deaths due to COVID19 recorded worldwide and in each countries from first date on record to present day.
 
 !["Map Tab"](images/home.png)
 
@@ -10,9 +10,11 @@ There are three tabs in the application: **Map**, **Cases**, **Deaths**
 
 The main page ("Map" tab) of the application has an interactive *leaflet* map that shows total number of cases in each country as you hover over it. Below the map is a  data table with information of the total number of recorded cases and deaths in all countries.
 
-!["Country Filter"](images/country.png)
+!["Country Filter"](images/country.PNG)
 
-The "Cases" and "Deaths" tab have a bar graph showing number of **new** cases and deaths respectively recorded everyday. By default this shows data from 31st December 2019 to present day. Below the plot is a downloadable table that contains details on new cases/deaths and total number cases/deaths for each day. 
+Countries can be filtered either through te dropdown menu on the left panel or by clicking markers on the map
+
+The "Cases" and "Deaths" tab have a bar graph showing number of **new** cases and deaths respectively recorded everyday. By default this shows data from first date on record to present day. Below the plot is a downloadable table that contains details on new cases/deaths and total number cases/deaths for each day. 
 
 !["Zooming in on Case graph"](images/zoomin.png)
 
