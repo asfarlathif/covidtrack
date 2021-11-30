@@ -39,8 +39,10 @@ covid_data <- rename(covid_data, adm0_a3 = iso_code) %>%
     select(-geometry)
 
 #imputing missing admin locations
-covid_data[covid_data$adm0_a3 == "OWID_KOS", 51] <- "Kosovo"
-covid_data[covid_data$adm0_a3 == "OWID_WRL", 51] <- "World"
+covid_data[covid_data$adm0_a3 == "OWID_KOS", 'admin'] <- "Kosovo"
+covid_data[covid_data$adm0_a3 == "OWID_WRL", 'admin'] <- "World"
+
+covid_data <-  covid_data %>% filter(!is.na(admin))
 
 #finding the latest total number of cases for each locations
 case <- select(covid_data, adm0_a3, admin,total_cases) %>%
@@ -79,6 +81,10 @@ ui <- fluidPage(
     # Application title
     titlePanel("COVID19 Tracker"),
     
+    "Track the evolution of COVID related cases and deaths for all countries",
+    
+    br(), br(),
+    
     # Sidebar layout
     sidebarLayout(
         
@@ -102,6 +108,7 @@ ui <- fluidPage(
             em(a("Our World in Data", href = "https://ourworldindata.org/")), 
             ". To visit their GitHub repository,", 
             "Click ", a("here", href = "https://github.com/owid/covid-19-data/tree/master/public/data"),
+            ". The data is updated once every day.",
             
             br(), br(),
             
