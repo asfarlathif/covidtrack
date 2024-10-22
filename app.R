@@ -15,16 +15,17 @@ library(plotly)
 
 #SPATIAL DATA PACKAGES FOR MAP AND COUNTRY COORDINATES
 library(sf)
-library(rgeos)
+# library(rgeos)
 library(rnaturalearth)
 library(rnaturalearthdata)
 
 options(shiny.autoreload = TRUE)
 
 #IMPORTING COVID19 DATA FROM DATABASE
-covid_data <-
-    read.csv("https://covid.ourworldindata.org/data/owid-covid-data.csv")
+# covid_data <-
+#     read.csv("https://covid.ourworldindata.org/data/owid-covid-data.csv")
 
+covid_data <- read.csv("owid-covid-data.csv")
 #EARTH MAP DATA
 world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
 world_points <- sf::st_centroid(world)
@@ -39,10 +40,13 @@ covid_data <- rename(covid_data, adm0_a3 = iso_code) %>%
     select(-geometry)
 
 #imputing missing admin locations
-covid_data[covid_data$adm0_a3 == "OWID_KOS", 'admin'] <- "Kosovo"
-covid_data[covid_data$adm0_a3 == "OWID_WRL", 'admin'] <- "World"
+covid_data[covid_data$adm0_a3 == "OWID_KOS", "admin"] <- "Kosovo"
+covid_data[covid_data$adm0_a3 == "OWID_WRL", "admin"] <- "World"
 
-covid_data <-  covid_data %>% filter(!is.na(admin))
+#filtering missing location IDs and smoothing the graph
+covid_data <- covid_data %>% 
+  filter(!is.na(admin)) %>% 
+  filter(new_cases != 0, new_deaths != 0)
 
 #finding the latest total number of cases for each locations
 case <- select(covid_data, adm0_a3, admin,total_cases) %>%
@@ -193,7 +197,7 @@ server <- function(input, output, session) {
         
         paste(paste0("Total cases:", "   ", CovidWorld$total_cases),
               paste0("Total Deaths:", "   ", CovidWorld$total_deaths),
-              paste0("New cases(past 24h):", "   ", newcase$new_cases),
+              paste0("New cases (last recorded ", newcase$date, "): ", newcase$new_cases),
               sep = "\n")
     })
     
@@ -364,10 +368,11 @@ server <- function(input, output, session) {
             
             rename(Country = admin, Date = date,
                    `Total Cases` = total_cases, 
-                   `New Cases` = new_cases) %>%
-            
+                   `New Cases` = new_cases) %>% 
             #filtering based on zooming
-            filter(Date %in% c(xaxis1()[1]:xaxis1()[2]))
+            filter(Date >= xaxis1()[1] & Date <= xaxis1()[2])
+            
+            # filter(Date %in% c(xaxis1()[1]:xaxis1()[2]))
         
         #Deaths table
         t2 <- covid_data_subset() %>% 
@@ -377,9 +382,11 @@ server <- function(input, output, session) {
             rename(Country = admin, Date = date,
                    `Total Deaths` = total_deaths, 
                    `New Deaths` = new_deaths) %>% 
+            #filtering based on zooming
+            filter(Date >= xaxis2()[1] & Date <= xaxis2()[2])
             
             #filtering based on zooming
-            filter(Date %in% c(xaxis2()[1]:xaxis2()[2]))
+            # filter(Date %in% c(xaxis2()[1]:xaxis2()[2]))
         
         return(list(t1, t2))
         
